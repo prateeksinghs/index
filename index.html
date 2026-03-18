@@ -254,8 +254,8 @@ async function syncToSheet(row) {
   const url = getSheetUrl();
   if (!url) return;
   try {
-    await fetch(url + '?action=add&data=' + encodeURIComponent(JSON.stringify(row)));
-  } catch(e) {}
+    await fetch(url + '?action=add&data=' + encodeURIComponent(JSON.stringify(row)), { redirect: 'follow' });
+  } catch(e) { console.warn('syncToSheet failed:', e); }
 }
 
 async function syncFromSheet() {
@@ -263,15 +263,29 @@ async function syncFromSheet() {
   if (!url) { toast('Connect your Google Sheet first'); showSetup(); return; }
   toast('Syncing...');
   try {
-    const res = await fetch(url + '?action=get');
-    const json = await res.json();
-    if (json && json.data && json.data.length) {
+    const res = await fetch(url + '?action=get', { redirect: 'follow' });
+    if (!res.ok) { toast('Sync failed: server returned ' + res.status); return; }
+    let json;
+    try { json = await res.json(); } catch(e) { toast('Sync failed: invalid response from Sheet'); console.error('JSON parse error', e); return; }
+    if (json && json.error) { toast('Sync failed: ' + json.error); return; }
+    if (json && json.data) {
+      if (!json.data.length) { toast('Sheet is empty — no data to sync'); return; }
       data = json.data;
       save(data);
       render(); renderStats();
       toast('Synced ' + data.length + ' applications');
+    } else {
+      toast('Sync failed: unexpected response format');
+      console.error('Unexpected response:', json);
     }
-  } catch(e) { toast('Sync failed. Check your Sheet URL'); }
+  } catch(e) {
+    console.error('syncFromSheet error:', e);
+    if (e.message && e.message.includes('CORS')) {
+      toast('Sync failed: CORS error — redeploy your Apps Script as "Anyone"');
+    } else {
+      toast('Sync failed: ' + (e.message || 'network error'));
+    }
+  }
 }
 
 function generateFollowUp(row) {

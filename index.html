@@ -148,6 +148,18 @@
   </div>
 </div>
 
+<div class="modal" id="setupModal">
+  <div class="modal-box">
+    <h3>Connect Google Sheet</h3>
+    <p>Paste your Google Apps Script Web App URL below to enable sync across all your devices.</p>
+    <input type="text" id="sheetUrlInput" placeholder="https://script.google.com/macros/s/..." style="width:100%;margin-bottom:8px;">
+    <div class="modal-actions">
+      <button class="btn" onclick="closeSetupModal()">Cancel</button>
+      <button class="btn btn-blue" onclick="saveSheetUrl()">Connect</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -219,13 +231,23 @@ function deleteRow(id) {
 function getSheetUrl() { return localStorage.getItem(SHEET_URL_KEY) || ''; }
 
 function showSetup() {
-  const url = prompt('Paste your Google Apps Script Web App URL here:\n\n(You will get this after following the setup guide)');
-  if (url && url.startsWith('https://')) {
-    localStorage.setItem(SHEET_URL_KEY, url);
-    document.getElementById('setupBanner').style.display = 'none';
-    toast('Sheet connected successfully');
-    syncFromSheet();
-  }
+  const existing = getSheetUrl();
+  if (existing) document.getElementById('sheetUrlInput').value = existing;
+  document.getElementById('setupModal').classList.add('open');
+}
+
+function closeSetupModal() {
+  document.getElementById('setupModal').classList.remove('open');
+}
+
+function saveSheetUrl() {
+  const url = document.getElementById('sheetUrlInput').value.trim();
+  if (!url || !url.startsWith('https://')) { toast('Please enter a valid https:// URL'); return; }
+  localStorage.setItem(SHEET_URL_KEY, url);
+  document.getElementById('setupBanner').style.display = 'none';
+  closeSetupModal();
+  toast('Sheet connected successfully');
+  syncFromSheet();
 }
 
 async function syncToSheet(row) {
